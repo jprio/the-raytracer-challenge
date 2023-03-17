@@ -1,0 +1,18 @@
+[package]
+name = "the-raytracer-challenge"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dev-dependencies]
+cucumber = "0.19"
+futures = "0.3"
+
+[dependencies]
+float_eq = "1.0.1"
+tokio = { version = "1.26.0", features = ["full"] }
+
+[[test]]
+name = "tuple_test" # this should be the same as the filename of your test target
+harness = false     # allows Cucumber to print output instead of libtest
