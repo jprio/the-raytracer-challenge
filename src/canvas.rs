@@ -1,9 +1,9 @@
-use crate::tuples::{self, Tuple, TupleKind};
+use crate::tuples::{self, Color, Tuple};
 #[derive(Debug)]
 pub struct Canvas {
     width: usize,
     height: usize,
-    data: Vec<Tuple>,
+    data: Vec<Color>,
 }
 
 impl Canvas {
@@ -11,20 +11,18 @@ impl Canvas {
         Canvas {
             width: width,
             height: height,
-            data: vec![
-                Tuple {
-                    x: 0., // red
-                    y: 0., // green
-                    z: 0., // blue
-                    w: TupleKind::Color,
-                };
-                width * height
-            ],
+            data: vec![Color::white(); width * height],
         }
     }
-    pub fn write_pixel(&mut self, x: usize, y: usize, color: Tuple) {
-        if ((x) + (y) * self.width) < self.width * self.height {
-            self.data[(x) + (y - 1) * self.width] = color;
+    pub fn write_pixel(&mut self, x: usize, y: usize, color: Color) {
+        println!("pixel {}:{}", x, y);
+        if ((x) + (y) * self.width < self.width * self.height)
+            && (y > 0)
+            && (x > 0)
+            && (x < self.width)
+            && (y < self.height)
+        {
+            self.data[(x) + (y) * self.width] = color;
         }
     }
     pub fn ppm_header(&self) -> String {
@@ -44,12 +42,12 @@ impl Canvas {
         //ppm.push_str(&Vec::<tuples::Tuple>::join(" "));
         for (pos, pixel) in self.data.iter().enumerate() {
             //println!("{}", pos);
-            let pix = &pixel.clamp(255., 0., 255.);
-            buffer.push_str(&pix.x.to_string());
+            let pix = &pixel.clamp(0., 255.);
+            buffer.push_str(&pix.red.to_string());
             buffer.push_str(" ");
-            buffer.push_str(&pix.y.to_string());
+            buffer.push_str(&pix.blue.to_string());
             buffer.push_str(" ");
-            buffer.push_str(&pix.z.to_string());
+            buffer.push_str(&pix.green.to_string());
             buffer.push_str(" ");
             if buffer.chars().count() > 60 {
                 ppm.push_str(&buffer);
@@ -88,23 +86,20 @@ mod tests {
     #[test]
     fn canvas_to_ppm() {
         let mut canvas = Canvas::new(5, 3);
-        let c1 = Tuple {
-            x: 1.5,
-            y: 0.,
-            z: 0.,
-            w: TupleKind::Color,
+        let c1 = Color {
+            red: 1.5,
+            green: 0.,
+            blue: 0.,
         };
-        let c2 = Tuple {
-            x: 0.,
-            y: 0.5,
-            z: 0.,
-            w: TupleKind::Color,
+        let c2 = Color {
+            red: 0.,
+            green: 0.5,
+            blue: 0.,
         };
-        let c3 = Tuple {
-            x: -0.5,
-            y: 0.,
-            z: 1.,
-            w: TupleKind::Color,
+        let c3 = Color {
+            red: -0.5,
+            green: 0.,
+            blue: 1.,
         };
         canvas.write_pixel(0, 0, c1);
         canvas.write_pixel(2, 1, c2);
@@ -117,42 +112,16 @@ mod tests {
     #[test]
     fn ticking() {
         let mut projectile = Projectile {
-            position: Tuple {
-                x: 0.,
-                y: 1.,
-                z: 0.,
-                w: TupleKind::Point,
-            },
-            velocity: Tuple {
-                x: 1.,
-                y: 1.8,
-                z: 0.,
-                w: TupleKind::Vector,
-            }
-            .normalize()
-                * 11.25,
+            position: Tuple::point(0., 1., 0.),
+            velocity: Tuple::vector(1., 1.8, 0.).normalize() * 11.25,
         };
         let env = Environment {
-            gravity: Tuple {
-                x: 0.,
-                y: -0.1,
-                z: 0.,
-                w: TupleKind::Vector,
-            },
-            wind: Tuple {
-                x: -0.01,
-                y: 0.,
-                z: 0.,
-                w: TupleKind::Vector,
-            },
+            gravity: Tuple::vector(0., -0.2, 0.),
+            wind: Tuple::vector(-0.1, 0., 0.),
         };
         let mut canvas = Canvas::new(900, 550);
-        let color = Tuple {
-            x: 1.,
-            y: 1.,
-            z: 1.,
-            w: TupleKind::Color,
-        };
+        let color = Color::green();
+
         let mut i = 0;
         while i < 450 {
             projectile = tick(env, projectile);
@@ -161,14 +130,27 @@ mod tests {
             let x = projectile.position.x.floor() as usize;
             let y = projectile.position.y.floor() as usize;
             println!(
-                "{}*{}={}   {} {}",
+                "{}*{}={}   {} ",
                 x,
                 y,
                 x * y,
-                canvas.height - y,
-                x * (canvas.height - y)
+                if canvas.height > y {
+                    canvas.height - y
+                } else {
+                    0
+                },
             );
-            canvas.write_pixel(x, canvas.height - y, color);
+            canvas.write_pixel(
+                x,
+                /*
+                if canvas.height > y {
+                    canvas.height - y
+                } else {
+                    0
+                }*/
+                canvas.height - y,
+                color,
+            );
         }
         fs::write("foo.ppm", canvas.to_ppm()).unwrap();
     }
